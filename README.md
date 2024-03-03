@@ -1,4 +1,4 @@
-# Cognit ![image](./logo.png)
+# Cognit ![image](./Logo.png)
 
 > Cognit is a streamlined neural computation framework and API engineered with Numpy fine-tuned for advanced machine learning operations and swift adaptability.
 
