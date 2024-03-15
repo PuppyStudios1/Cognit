@@ -5,7 +5,7 @@
 Cognit is a streamlined neural computation framework and API engineered with Numpy
 fine-tuned for advanced machine learning operations and swift adaptability.
 
-importing Cognit via the command:  >>> import cognit
+importing Cognit via the command:  >>> import cognit as cn
 
 How to use the docstring
 ----------------------------
@@ -19,7 +19,7 @@ TIP - remember: only make one output neuron
 
 - 1. make a instance for deepflow (this will make sense later)
 
->>> model = cognit.deepflow()
+>>> model = cn.deepflow()
 
 - 2. make a list for defineing your neuron values
 
@@ -31,7 +31,7 @@ TIP - remember: only make one output neuron
 
 - 4. create a layer instance
 
->>> model_layer = cognit.deepflow.layers() 
+>>> model_layer = cn.deepflow.layers() 
 
 - 5. assign neuron values
 
@@ -44,10 +44,9 @@ TIP - remember: only make one output neuron
     y=datay,
     layers=layers_,  # List of layers created using model_layer
     loss_calc="mse",  # or "CE" for cross-entropy
-    y_true=None,  # Placeholder (not used in current implementation)
-    y_pred=None,  # Placeholder (not used in current implementation)
-    learning_rate=0.01, # Placeholder (Default)
-    epochs=100, # Placeholder (Default)
+    min_delta=0.001
+    patience=5
+    epochs=100, 
 ) 
 
 
@@ -56,9 +55,9 @@ TIP - remember: only make one output neuron
 """
 
 import numpy as np
-
-
-
+import uuid
+import time
+import os
 
 class deepflow:
     
@@ -69,6 +68,12 @@ class deepflow:
     deepflow is the class used in cognit, its used by Initializing weights and biases with random values
     deepflow also helps with training the neural network with it's `train_data()` function.
 
+    sub-classes:
+    
+    - `deepflow.layers()`
+    - `deepflow.activation()`
+    - `deepflow.optimisers`
+    - `deepflow.losses()`
 
     """
     
@@ -115,7 +120,7 @@ class deepflow:
             self.biases2 = np.zeros((self.output_size,))
             
         
-        def denseLayer(self, input_size, output_size, activation="relu") -> None:
+        def dense(self, input_size, output_size, activation="relu") -> None:
             """
             `deepflow.layers.denseLayer()`
             ----
@@ -132,9 +137,9 @@ class deepflow:
             # Store chosen activation function
             self.activation = activation
             
-        def flatLayer(self, X):
+        def flatten(self, X):
             """
-            `deepflow.layers.flatLayer()`
+            `deepflow.layers.flatten()`
             ----
             
             Performs the flattening operation.
@@ -148,50 +153,74 @@ class deepflow:
             # Reshape the input data to a single dimension
             return X.flatten()
         
-    def activation_layer(activation,X):
-        
-        """
-        `deepflow.layers.activation_layer()`
-        ----
-        Applies a specified activation function to the input data.
+        def dropout(X, keep_prob):
+            """
+            `deepflow.layers.dropout()`
+            -----
+            Implements a Dropout layer during training.
+            Args:
+                X: Input data (numpy array).
+                keep_prob: Probability of keeping a neuron (1.0 - dropout rate).
 
-    Args:
-        activation (str): The name of the activation function to use.
-            Supported options include:
+            Returns:
+                Output data with dropout applied (numpy array).
+            """
+            # Generate a random mask with values 0 or 1
+            mask = np.random.rand(*X.shape) < keep_prob
+
+            # Apply the mask by multiplying with the input
+            output = X * mask
+
+            # Invert dropout for training stability (optional)
+            # Scaled output to maintain expected value during backpropagation
+            output /= keep_prob
+
+            return output
+        
+        def activation_layer(activation,X):
             
-                - "sigmoid"
-                - "ReLU"
-                - "tanh"
-                - "elu" (Exponential Linear Unit)
-                - "mish" (Mish activation)
-                - "linear"
-                - "swish" (Swish activation)
-        X (numpy.ndarray): The input data.
+            """
+            `deepflow.layers.activation_layer()`
+            ----
+            Applies a specified activation function to the input data.
 
-    Returns:
-        numpy.ndarray: The input data after applying the specified activation function.
+        Args:
+            activation (str): The name of the activation function to use.
+                Supported options include:
+                
+                    - "sigmoid"
+                    - "ReLU"
+                    - "tanh"
+                    - "elu" (Exponential Linear Unit)
+                    - "mish" (Mish activation)
+                    - "linear"
+                    - "swish" (Swish activation)
+            X (numpy.ndarray): The input data.
 
-    Raises:
-        ValueError: If an unsupported activation function is provided.
-        """
-        
-        if activation == "sigmoid":
-            deepflow.activation.sigmoid(X)
-        elif activation == "ReLU":
-        # Apply ReLU activation
-            deepflow.activation.ReLU(X)
-        elif activation == "tanh":
-            deepflow.activation.tanh(X)
-        elif activation == "elu":
-            deepflow.activation.elu(X)
-        elif activation == "mish":
-            deepflow.activation.tanh(X)
-        elif activation == "linear":
-            deepflow.activation.linear(X)
-        elif activation == "swish":
-            deepflow.activation.swish(X)
-        else:
-            raise ValueError("Unsupported activation function: {}".format(activation))
+        Returns:
+            numpy.ndarray: The input data after applying the specified activation function.
+
+        Raises:
+            ValueError: If an unsupported activation function is provided.
+            """
+            
+            if activation == "sigmoid":
+                deepflow.activation.sigmoid(X)
+            elif activation == "ReLU":
+            # Apply ReLU activation
+                deepflow.activation.ReLU(X)
+            elif activation == "tanh":
+                deepflow.activation.tanh(X)
+            elif activation == "elu":
+                deepflow.activation.elu(X)
+            elif activation == "mish":
+                deepflow.activation.tanh(X)
+            elif activation == "linear":
+                deepflow.activation.linear(X)
+            elif activation == "swish":
+                deepflow.activation.swish(X)
+            else:
+                raise ValueError("Unsupported activation function: {}".format(activation))
 
     class activation:
         """
@@ -209,6 +238,7 @@ class deepflow:
         - `deepflow.activation.tanh()`
         - `deepflow.activation.swish()`
         - `deepflow.activation.forward()`
+        -  `deepflow.activation.softmax()`
         
         
         """
@@ -294,6 +324,27 @@ class deepflow:
           """
           return np.tanh(X)
 
+        def softmax(x):
+            """
+            `deepflow.activation.softmax`
+            -----
+            
+            Computes the softmax of the input vector.
+
+            Args:
+                x: Input vector (numpy array).
+
+            Returns:
+                Softmax output vector (numpy array).
+            """
+            # Exponentiate the input values
+            exp_x = np.exp(x)
+
+            # Avoid potential overflow by calculating the sum of exponentials first
+            sum_exp_x = np.sum(exp_x, axis=0, keepdims=True)
+
+            # Normalize by dividing with the sum to get probabilities
+            return exp_x / sum_exp_x
           
         def swish(self, X):
             """
@@ -330,6 +381,7 @@ class deepflow:
                     "tanh": self.tanh,
                     "mish": self.mish,
                     "linear": self.linear,
+                    "softmax": self.softmax,
                 }
           activation_func = activation_map.get(activation_func, self.sigmoid)  # Default to sigmoid if not specified
 
@@ -362,6 +414,7 @@ class deepflow:
                     "tanh": self.tanh,
                     "mish": self.mish,
                     "linear": self.linear,
+                    "softmax": self.softmax,
             }
             activation_derivative = activation_map.get(activation_func, self.sigmoid_derivative)
 
@@ -441,45 +494,115 @@ class deepflow:
             cross_entropy_loss = -np.sum(y_true * np.log(y_pred), axis=1)
             # Return average cross-entropy
             return np.mean(cross_entropy_loss)
-  
-    def train_data(self, X, y, layers, loss_calc, y_true, y_pred, learning_rate=0.01, epochs=100):  
+
+    class optimiser:
+        """
+        `deepflow.optimisers()`
+        stores built in optimesers:
+        
+        - `deepflow.optimiser.adam()`
+        """
+        def __init__(self) -> None:
+            pass
+
+        def adam(params, grads, learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
+            """
+            `deepflow.optimiser.adam()`
+            ------
+            
+            Implements the Adam optimizer for parameter updates.
+
+            Args:
+                params: List of NumPy arrays containing model parameters.
+                grads: List of NumPy arrays containing gradients for each parameter.
+                learning_rate: Learning rate (default: 0.001).
+                beta1: Decay rate for 1st moment estimate (default: 0.9).
+                beta2: Decay rate for 2nd moment estimate (default: 0.999).
+                epsilon: Small value to prevent division by zero (default: 1e-8).
+
+            Returns:
+                List of updated parameters (NumPy arrays).
+            """
+
+            # Initialize moment estimates (zeros)
+            m_t = [np.zeros_like(p) for p in params]
+            v_t = [np.zeros_like(p) for p in params]
+
+            t = 0  # Timestep
+
+            updated_params = []
+            for p, g in zip(params, grads):
+                t += 1
+
+                # Update moving average of gradient (1st moment)
+                m_t[0] = beta1 * m_t[0] + (1 - beta1) * g
+
+                # Update moving average of squared gradient (2nd moment)
+                v_t[0] = beta2 * v_t[0] + (1 - beta2) * g**2
+
+                # Bias correction for 1st moment
+                m_hat = m_t[0] / (1 - beta1**t)
+
+                # Bias correction for 2nd moment
+                v_hat = v_t[0] / (1 - beta2**t)
+
+                # Update parameter with Adam formula
+                p -= learning_rate * m_hat / (np.sqrt(v_hat) + epsilon)
+
+                updated_params.append(p)
+
+            return updated_params
+
+    def train_data(self, X, y, layers, loss_calc, epochs=100, min_delta=0.001, patience=5):
         """
         `deepflow.train_data()`
-        ----
-        Trains the neural network using provided data.
+        -----
+        
+        Trains the neural network using provided data with Adam optimizer and early stopping.
 
         Args:
             X (numpy.ndarray): The input data.
             y (numpy.ndarray): The target values (labels).
-            learning_rate (float, optional): The learning rate used for updating weights and biases. Defaults to 0.01.
-            epochs (int, optional): The number of training epochs. Defaults to 100.
+            layers (list): List of layer objects defining the network architecture.
+            loss_calc (function): Function that calculates the loss between predicted and true values.
+            epochs (int, optional): The maximum number of training epochs. Defaults to 100.
+            min_delta (float, optional): Minimum change in loss to consider improvement. Defaults to 0.001.
+            patience (int, optional): Number of epochs with no improvement to trigger early stopping. Defaults to 5.
 
-        Raises:
-            ValueError: If the input data and target values have different shapes.
+        Returns:
+            list: List of training losses for each epoch.
         """
 
         # Check if input data and target values have the same shape
-        if X != y:
-            raise ValueError("Input data and target values must have the same number of samples.")
+        if X.shape != y.shape:
+            raise ValueError("Input data and target values must have the same shape.")
 
-        for epoch in range(epochs):  # Use the epochs parameter
-            # Forward pass
-            predictions = deepflow.activation.forward(X)
+        # Initialize weights and biases for each layer
+        for layer in layers:
+            layer.dense()
+
+        # Training loop
+        training_losses = []
+        best_loss = np.inf
+        epochs_no_improvement = 0
+        for epoch in range(epochs):
+            # Forward propagation
+            y_pred = self.forward(X, layers)  # Use your custom forward function
 
             # Calculate loss
-            if loss_calc == "mse" or loss_calc == "MSE":
-                loss = deepflow.losses.mse(y_true, y_pred)
-            elif loss_calc == "ce" or loss_calc == "CE" or loss_calc == "cross entropy":
-                loss = deepflow.losses.CE(y_true, y_pred)
-            else:
-                print("Error: loss calculator not specified")
-                exit(1)
+            loss = loss_calc(y, y_pred)
+            training_losses.append(loss)
 
-            # Backward pass to calculate gradients
-            gradients = deepflow.activation.backward(X, y, predictions)
+            # Print loss information (optional)
+            print(f"Epoch: {epoch+1}, Loss: {loss:.4f}")
 
-            # Update weights and biases based on gradients and learning rate
-            # ... (implementation omitted for safety reasons)
+            # Backpropagation using your custom function
+            grads = self.backward(y, y_pred, layers)  # Use your custom backward function
 
-            # Print loss for monitoring
-            print(f"Epoch {epoch+1}/{epochs}, Loss: {loss:.4f}")
+            # Update weights and biases using Adam optimizer
+            updated_params = self.optimiser().adam(
+                [layer.weights for layer in layers] + [layer.biases for layer in layers], grads
+            )
+            for i, layer in enumerate(layers):
+                layer.weights = updated_params[2 * i]
+                layer.biases = updated_params[2 * i + 1]
