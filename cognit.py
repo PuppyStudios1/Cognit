@@ -39,14 +39,16 @@ TIP - remember: only make one output neuron
 
 - 6. train your neurons (with your array data)
 
->>> model.train_data(
-    X=datax,
-    y=datay,
+>>> model.train_data (
+
+    X=datax,  # data must be numpy array
+    y=datay,  # data must be numpy array
     layers=layers_,  # List of layers created using model_layer
-    loss_calc="mse",  # or "CE" for cross-entropy
+    loss_calc="mse",  # or "CE" for cross-entropy (mse default)
     min_delta=0.001
     patience=5
     epochs=100, 
+
 ) 
 
 
@@ -57,7 +59,7 @@ TIP - remember: only make one output neuron
 import numpy as np
 import uuid
 import time
-import os
+import os, sys
 
 class deepflow:
     
@@ -90,8 +92,11 @@ class deepflow:
             
             functions:
             
-            - `deepflow.layers.layer`
-            - `deepflow.layers.activation_layer`
+            - `deepflow.layers.layer()`
+            - `deepflow.layers.activation_layer()`
+            - `deepflow.layers.dense()`
+            - `deepflow.layers.flatten()`
+            - `deepflow.layers.dropout()`
             """
         def __init__(self,input_size=0,hidden_size=0,output_size=0) -> None:
             self.input_size = input_size
@@ -238,7 +243,7 @@ class deepflow:
         - `deepflow.activation.tanh()`
         - `deepflow.activation.swish()`
         - `deepflow.activation.forward()`
-        -  `deepflow.activation.softmax()`
+        - `deepflow.activation.softmax()`
         
         
         """
@@ -498,7 +503,10 @@ class deepflow:
     class optimiser:
         """
         `deepflow.optimisers()`
-        stores built in optimesers:
+        ------
+
+        stores built in optimesers.
+        functions:
         
         - `deepflow.optimiser.adam()`
         """
@@ -552,6 +560,17 @@ class deepflow:
                 updated_params.append(p)
 
             return updated_params
+    
+    class dataset:
+        def __init__(self) -> None:
+            pass
+        
+        def mnist():
+            try:
+                os.system("wget https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz")
+                print("\nDownloading mnist dataset from keras API: https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz")
+            except:
+                print("\ncognit.deepflow - mnist dataset failed to download.")
 
     def train_data(self, X, y, layers, loss_calc, epochs=100, min_delta=0.001, patience=5):
         """
@@ -593,7 +612,21 @@ class deepflow:
             loss = loss_calc(y, y_pred)
             training_losses.append(loss)
 
-            # Print loss information (optional)
+            
+            print("Loading:")
+
+
+            #animation = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"]
+            animation = ["━━━━━ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10%","━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━━━━━━━━━ 20%", "━━━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━━━━━━━ 30%", "━━━━━━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━━━━ 40%", "━━━━━━━━━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━ 50%", "━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━━━━━━━━━━ 60%", "━━━━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━━━━━━━ 70%", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━━━━ 80%", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━ 90%", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100%"]
+
+            for i in range(len(animation)):
+                time.sleep(0.2)
+                sys.stdout.write("\r" + animation[i % len(animation)])
+                sys.stdout.flush()
+
+            print("\n")
+
+            
             print(f"Epoch: {epoch+1}, Loss: {loss:.4f}")
 
             # Backpropagation using your custom function
@@ -605,4 +638,5 @@ class deepflow:
             )
             for i, layer in enumerate(layers):
                 layer.weights = updated_params[2 * i]
+                layer.biases = updated_params[2 * i + 1]
                 layer.biases = updated_params[2 * i + 1]
