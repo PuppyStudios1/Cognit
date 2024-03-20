@@ -16,40 +16,30 @@ easy setup
 ----------
 TIP - remember: only make one output neuron
 
+- 1. import cognit (for your own dataset, use numpy)
+>>> import cognit as cn
 
-- 1. make a instance for deepflow (this will make sense later)
+- 2. make sure you have your array data, (using mnist)
 
->>> model = cn.deepflow()
+>>> dataset = cn.deepflow.dataset.mnist
 
-- 2. make a list for defineing your neuron values
+- 3. make it into 2 variables, X_train and y_train
+>>> (X_train,y_train), (X_train,y_train) = cn.deepflow.dataset.load()
 
->>> layers_ = [x,y,z] # <- x,y,z to represent layers (input,hidden,output)
+- 4. make a sequential container
 
-- 3. make sure you have your array data (numpy recommended)
+>>> model = cn.deepflow.sequential ([
+    cn.deepflow.layers.flatten(X=12),
+    cn.deepflow.layers.dense(128,activation="relu"),
+    cn.deepflow.layers.dense(10,activation="softmax")
+])
 
->>> np.zeros((datax, datay))
+- 5. train the Neural network
 
-- 4. create a layer instance
+>>> cn.deepflow.train_data(X=X_train,y=y_train,optimiser="adam",epochs=100)
 
->>> model_layer = cn.deepflow.layers() 
 
-- 5. assign neuron values
 
->>> model_layer.layer(input_size=x,hidden_size=y,output_size=z) # <- x,y,z to represent layer values eg 2,4,1
-
-- 6. train your neurons (with your array data)
-
->>> model.train_data (
-
-    X=datax,  # data must be numpy array
-    y=datay,  # data must be numpy array
-    layers=layers_,  # List of layers created using model_layer
-    loss_calc="mse",  # or "CE" for cross-entropy (mse default)
-    min_delta=0.001
-    patience=5
-    epochs=100, 
-
-) 
 
 
 
@@ -60,6 +50,7 @@ import numpy as np
 import uuid
 import time
 import os, sys
+
 
 class deepflow:
     
@@ -78,9 +69,11 @@ class deepflow:
     - `deepflow.losses()`
 
     """
+    global layers_
+    layers_ = []
     
     def __init__(self) -> None:
-        pass    
+        pass
 
     class layers:
         """
@@ -114,6 +107,7 @@ class deepflow:
             `hidden_size: hidden neurons`
             `output_size: output neurons`
             """
+            
             str(self.input_size)
             str(self.hidden_size)
             str(self.output_size)
@@ -211,9 +205,9 @@ class deepflow:
             
             if activation == "sigmoid":
                 deepflow.activation.sigmoid(X)
-            elif activation == "ReLU":
+            elif activation == "relu":
             # Apply ReLU activation
-                deepflow.activation.ReLU(X)
+                deepflow.activation.relu(X)
             elif activation == "tanh":
                 deepflow.activation.tanh(X)
             elif activation == "elu":
@@ -224,6 +218,8 @@ class deepflow:
                 deepflow.activation.linear(X)
             elif activation == "swish":
                 deepflow.activation.swish(X)
+            elif activation == "softmax":
+                deepflow.activation.softmax(X)
             else:
                 raise ValueError("Unsupported activation function: {}".format(activation))
 
@@ -263,7 +259,7 @@ class deepflow:
             """
             return 1 / (1 + np.exp(-X))
           
-        def ReLU(self, X):
+        def relu(self, X):
             """
             `deepflow.activation.ReLU()`
             ----
@@ -380,7 +376,7 @@ class deepflow:
   
           activation_map = {
                     "sigmoid": self.sigmoid,
-                    "relu": self.ReLU,
+                    "relu": self.relu,
                     "swish": self.swish,
                     "elu": self.elu,
                     "tanh": self.tanh,
@@ -413,7 +409,7 @@ class deepflow:
 
             activation_map = {
                     "sigmoid": self.sigmoid,
-                    "relu": self.ReLU,
+                    "relu": self.relu,
                     "swish": self.swish,
                     "elu": self.elu,
                     "tanh": self.tanh,
@@ -493,6 +489,29 @@ class deepflow:
             Returns:
                 float: The cross-entropy loss.
             """
+        def sce(y_true, y_pred):
+            """
+            Calculates the sparse categorical crossentropy loss.
+
+            Args:
+                y_true: Ground truth labels, an integer array of shape (num_samples,).
+                y_pred: Predicted probabilities, a float array of shape (num_samples, num_classes).
+
+            Returns:
+                The average sparse categorical crossentropy loss across samples.
+            """
+            # Clip predictions to avoid overflow/underflow in log
+            y_pred = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+            # One-hot encode the labels
+            y_true = np.eye(y_pred.shape[1])[y_true]
+
+            # Calculate the loss per sample
+            loss = -np.sum(y_true * np.log(y_pred), axis=1)
+
+            # Return the average loss
+            return np.mean(loss)
+        
             # Clip predicted probabilities to avoid division by zero
             y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
             # Calculate cross-entropy for each sample
@@ -565,14 +584,48 @@ class deepflow:
         def __init__(self) -> None:
             pass
         
-        def mnist():
-            try:
-                os.system("wget https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz")
-                print("\nDownloading mnist dataset from keras API: https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz")
-            except:
-                print("\ncognit.deepflow - mnist dataset failed to download.")
+        class mnist:
+            def __init__():
+                try:
+                    os.system("wget https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz")
+                    print("\nDownloading mnist dataset from tf keras API: https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz")
+                    
+                    
+                except:
+                    print("\ncognit.deepflow - mnist dataset failed to download.")
+        def load(loadi="./mnist.npz"):
+            np.load(loadi)
+            
+    
+    def sequential(first_arg, *args, **kwargs):
+        """
+        `deepflow.sequential()`
+        --------
+        
+        Creates a sequential container(and runs it)
 
-    def train_data(self, X, y, layers, loss_calc, epochs=100, min_delta=0.001, patience=5):
+        Args:
+            first_arg: The first argument, which should be a list of code blocks or
+                        a single code block to be executed.
+            *args: Additional positional arguments to be passed to the code blocks.
+            **kwargs: Additional keyword arguments to be passed to the code blocks.
+
+        Returns:
+            The result of the last executed code block, if any.
+        """
+
+        if isinstance(first_arg, list):
+            for code_block in first_arg:
+                result = eval(code_block, args, kwargs)  # Execute code with args and kwargs
+        else:
+            result = eval(first_arg, args, kwargs)  # Execute the first argument directly
+
+        return result
+
+            
+
+
+    def train_data(self, optimiser="adam", X=None, y=None, layers_=[],loss_calc="mse", epochs=100, min_delta=0.001, patience=5):
         """
         `deepflow.train_data()`
         -----
@@ -597,7 +650,7 @@ class deepflow:
             raise ValueError("Input data and target values must have the same shape.")
 
         # Initialize weights and biases for each layer
-        for layer in layers:
+        for layer in layers_:
             layer.dense()
 
         # Training loop
@@ -606,37 +659,32 @@ class deepflow:
         epochs_no_improvement = 0
         for epoch in range(epochs):
             # Forward propagation
-            y_pred = self.forward(X, layers)  # Use your custom forward function
+            y_pred = self.forward(X, layers_)  # Use your custom forward function
 
             # Calculate loss
             loss = loss_calc(y, y_pred)
             training_losses.append(loss)
 
-            
-            print("Loading:")
-
 
             #animation = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"]
-            animation = ["━━━━━ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10%","━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━━━━━━━━━ 20%", "━━━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━━━━━━━ 30%", "━━━━━━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━━━━ 40%", "━━━━━━━━━━━━━━━━━━━ ━━━━━━━━━━━━━━━━━━ 50%", "━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━━━━━━━━━━ 60%", "━━━━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━━━━━━━ 70%", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━━━━ 80%", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ━━━━━ 90%", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100%"]
+            animation = ["[==>                  ] 10%","[====>                ] 20%", "[======>              ] 30%", "[========>            ] 40%", "[==========>          ] 50%", "[============>        ] 60%", "[==============>     ] 70%", "[================>    ] 80%", "[==================>  ] 90%", "[====================>] 100% "]
 
             for i in range(len(animation)):
                 time.sleep(0.2)
                 sys.stdout.write("\r" + animation[i % len(animation)])
                 sys.stdout.flush()
-
-            print("\n")
-
-            
-            print(f"Epoch: {epoch+1}, Loss: {loss:.4f}")
+                print(f"\nEpoch: {epoch+1} - loss: {loss:.4f}")
 
             # Backpropagation using your custom function
-            grads = self.backward(y, y_pred, layers)  # Use your custom backward function
+            grads = self.backward(y, y_pred, layers_)  # Use your custom backward function
 
             # Update weights and biases using Adam optimizer
-            updated_params = self.optimiser().adam(
-                [layer.weights for layer in layers] + [layer.biases for layer in layers], grads
-            )
-            for i, layer in enumerate(layers):
+            if optimiser == "adam":
+                updated_params = self.optimiser().adam(
+                    [layer.weights for layer in layers_] + [layer.biases for layer in layers_], grads)
+            else:
+                print("cognit.deepflow.optimisers.adam - sorry, optimiser not supported.")
+            
+            for i, layer in enumerate(layers_):
                 layer.weights = updated_params[2 * i]
-                layer.biases = updated_params[2 * i + 1]
                 layer.biases = updated_params[2 * i + 1]
