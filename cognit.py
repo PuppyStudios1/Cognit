@@ -135,7 +135,7 @@ class deepflow:
             biases2 = np.zeros((output_size,))
             
         @classmethod
-        def dense(self, input_size, output_size, activation="relu") -> None:
+        def dense(self, input_size, output_size=1, activation="relu") -> None:
             """
             `deepflow.layers.denseLayer()`
             ----
