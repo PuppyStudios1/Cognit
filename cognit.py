@@ -14,7 +14,6 @@ Read deepflow classes & deepflow function docstrings for more information
 
 easy setup
 ----------
-TIP - remember: only make one output neuron
 
 - 1. import cognit (for your own dataset, use numpy)
 >>> import cognit as cn
@@ -24,19 +23,21 @@ TIP - remember: only make one output neuron
 >>> dataset = cn.deepflow.dataset.mnist
 
 - 3. make it into 2 variables, X_train and y_train
->>> (X_train,y_train), (X_train,y_train) = cn.deepflow.dataset.load()
+>>> (X_train,y_train) = cn.deepflow.dataset.load()
 
 - 4. make a sequential container
 
->>> model = cn.deepflow.sequential ([
-    cn.deepflow.layers.flatten(X=12),
-    cn.deepflow.layers.dense(128,activation="relu"),
-    cn.deepflow.layers.dense(10,activation="softmax")
+>>> model = cn.deepflow.sequential([
+    
+    cn.deepflow.layers.flatten(input_shape=(28,28)),
+    cn.deepflow.layers.dense(12,activation="relu"),
+    cn.deepflow.layers.dropout(rate=0.2,input_shape=(2,1)),
+    cn.deepflow.layers.dense(10,1,activation="softmax")
 ])
 
-- 5. train the Neural network
+- 5. train the Neural network with your data
 
->>> cn.deepflow.train_data(X=X_train,y=y_train,optimiser="adam",epochs=100)
+>>> model.train_data(optimiser="adam",X=x_train,y=y_train,layers_=model,loss_calc="sce",epochs=100)
 
 
 
@@ -58,15 +59,17 @@ class deepflow:
     `deepflow`
     =====
 
-    deepflow is the class used in cognit, its used by Initializing weights and biases with random values
+    deepflow is a neural networking package made originally in python. it can be used by Initializing weights and biases with random values
     deepflow also helps with training the neural network with it's `train_data()` function.
 
     sub-classes:
     
     - `deepflow.layers()`
     - `deepflow.activation()`
-    - `deepflow.optimisers`
+    - `deepflow.optimisers()`
     - `deepflow.losses()`
+    - `deepflow.dataset()`
+    - `deepflow.sequential`
 
     """
     global layers_
@@ -78,7 +81,7 @@ class deepflow:
         pass
         
     
-    def constant(self,t1,t2,t3,t4,t5,t6,t7,t8):
+    def constant(t1,t2,t3,t4,t5,t6,t7,t8):
         int(t1)
         int(t2)
         int(t3)
@@ -92,10 +95,9 @@ class deepflow:
     class layers:
         """
 
-            `deepflow.layers`
+            `deepflow.layers()`
             ----
             contains nessesary functions for creating input, hidden and output layers.
-            (NOTE: using layer, it is important you make an instance, eg. `model_package = cognit.deepflow.layers() model_package.layer(input_size=x,hidden_size=y,output_size=z`)
             
             functions:
             
@@ -105,10 +107,18 @@ class deepflow:
             - `deepflow.layers.flatten()`
             - `deepflow.layers.dropout()`
             """
+            
+        global leng
+        global mask
+            
+        leng=0
+        mask=" "
+        
         def __init__(self,input_size=0,hidden_size=0,output_size=0) -> None:
             self.input_size = input_size
             self.hidden_size = hidden_size
             self.output_size = output_size
+
         
         activated_output = ""
         
@@ -185,31 +195,46 @@ class deepflow:
             return flatten
         
         @classmethod
-        def dropout(X, input_shape):
+        def dropout(self,rate,input_shape):
             """
-            `deepflow.layers.dropout()`
+            `deepflow.layers.dropou=t()`
             -----
             Implements a Dropout layer during training.
             Args:
-                X: Input data (numpy array).
-                keep_prob: Probability of keeping a neuron (1.0 - dropout rate).
+                X: Probability of keeping a neuron (1.0 - dropout rate).
+                input_shape: array data 
 
             Returns:
                 Output data with dropout applied (numpy array).
             """
-            # Generate a random mask with values 0 or 1
-            mask = np.random.rand(*X.shape) < input_shape
+            leng = 0.0
+            mask = 0
+            
+            float(leng)
+            
+            if isinstance(input_shape, tuple):
+                leng = 1
+            elif isinstance(input_shape, np.ndarray):  # Check for NumPy array (optional)
+                leng = 0
+            else:
+                print("deepflow.layers.dropout() - variable is neither a tuple nor a NumPy array:")
+
+            if leng == 0:
+                # Generate a random mask with values 0 or 1
+                mask = np.random.rand(*input_shape.shape) < rate
+            elif leng == 1:
+                mask = np.random.rand(np.ndim(input_shape)) < rate
 
             # Apply the mask by multiplying with the input
-            output = X * mask
+            output = rate * mask
 
             # Invert dropout for training stability (optional)
             # Scaled output to maintain expected value during backpropagation
-            output /= input_shape
+            output /= rate
 
             return output
         
-        @classmethod
+        
         def activation(activation,X):
             
             """
@@ -364,7 +389,6 @@ class deepflow:
           """
           return np.tanh(X)
       
-        @classmethod
         def softmax(x):
             """
             `deepflow.activation.softmax`
@@ -635,11 +659,11 @@ class deepflow:
                     
                 except:
                     print("\ncognit.deepflow - mnist dataset failed to download.")
-        def load(path="./mnist.npz"):
-            np.load(path)
+            def load(path="./mnist.npz"):
+                np.load(path)
             
     
-    def sequential(layers_):
+    class sequential:
         """
         `deepflow.sequential([])`
         --------
@@ -654,73 +678,77 @@ class deepflow:
 
         Returns:
             The result of the last executed code block, if any.
-        """
-
-        for item in layers_:
-            if callable(item):
-                item()  # Call the item if it's a function
-        else:
-            pass
         
-            
-
-    @classmethod
-    def train_data(self, optimiser="adam", X=None, y=None, layers_=[],loss_calc="mse", epochs=100, min_delta=0.001, patience=5):
-        """
-        `deepflow.train_data()`
-        -----
+        fuctions:
         
-        Trains the neural network using provided data with Adam optimizer and early stopping.
-
-        Args:
-            X (numpy.ndarray): The input data.
-            y (numpy.ndarray): The target values (labels).
-            layers (list): List of layer objects defining the network architecture.
-            loss_calc (function): Function that calculates the loss between predicted and true values.
-            epochs (int, optional): The maximum number of training epochs. Defaults to 100.
-            min_delta (float, optional): Minimum change in loss to consider improvement. Defaults to 0.001.
-            patience (int, optional): Number of epochs with no improvement to trigger early stopping. Defaults to 5.
-
-        Returns:
-            list: List of training losses for each epoch.
+        `deepflow.seqential.train_data()`
         """
-
-        # Check if input data and target values have the same shape
-        if X.shape != y.shape:
-            raise ValueError("Input data and target values must have the same shape.")
-
-        # Training loop
-        training_losses = []
-        best_loss = np.inf
-        epochs_no_improvement = 0
-        for epoch in range(epochs):
-            # Forward propagation
-            y_pred = deepflow.activation.forward(X,layers_)
-
-            # Calculate loss
-            loss = loss_calc(y, y_pred)
-            training_losses.append(loss)
-
-
-            #animation = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"]
-            animation = ["[==>                  ] 10%","[====>                ] 20%", "[======>              ] 30%", "[========>            ] 40%", "[==========>          ] 50%", "[============>        ] 60%", "[==============>     ] 70%", "[================>    ] 80%", "[==================>  ] 90%", "[====================>] 100% "]
-
-            for i in range(len(animation)):
-                time.sleep(0.2)
-                sys.stdout.write("\r" + animation[i % len(animation)])
-                sys.stdout.flush()
-                print(f"\nEpoch: {epoch+1} - loss: {loss:.4f}")
-
-            # Backpropagation using your custom function
-            grads = deepflow.activation.backward(X,y_pred,layers_)  # Use your custom backward function
-
-            # Update weights and biases using Adam optimizer
-            if optimiser == "adam":
-                updated_params = self.optimiser.adam(
-                    [layer.weights for layer in layers_] + [layer.biases for layer in layers_], grads)
+        
+        def __init__(layers_):
+            for item in layers_:
+                if callable(item):
+                    item()  # Call the item if it's a function
             else:
-                print("deepflow.optimisers.adam() - optimiser not supported.")
+                pass
             
-            for i, layer in enumerate(layers_):
-                layer.weights = updated_params[2 * i]
-                layer.biases = updated_params[2 * i + 1]
+
+        @classmethod
+        def train_data(self, optimiser="adam", X=None, y=None, layers_=[],loss_calc="mse", epochs=100, min_delta=0.001, patience=5):
+            """
+            `deepflow.train_data()`
+            -----
+            
+            Trains the neural network using provided data with Adam optimizer and early stopping.
+
+            Args:
+                X (numpy.ndarray): The input data.
+                y (numpy.ndarray): The target values (labels).
+                layers (list): List of layer objects defining the network architecture.
+                loss_calc (function): Function that calculates the loss between predicted and true values.
+                epochs (int, optional): The maximum number of training epochs. Defaults to 100.
+                min_delta (float, optional): Minimum change in loss to consider improvement. Defaults to 0.001.
+                patience (int, optional): Number of epochs with no improvement to trigger early stopping. Defaults to 5.
+
+            Returns:
+                list: List of training losses for each epoch.
+            """
+
+            # Check if input data and target values have the same shape
+            if X.shape != y.shape:
+                raise ValueError("Input data and target values must have the same shape.")
+
+            # Training loop
+            training_losses = []
+            best_loss = np.inf
+            epochs_no_improvement = 0
+            for epoch in range(epochs):
+                # Forward propagation
+                y_pred = deepflow.activation.forward(X,layers_)
+
+                # Calculate loss
+                loss = loss_calc(y, y_pred)
+                training_losses.append(loss)
+
+
+                #animation = ["10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "100%"]
+                animation = ["[==>                  ] 10%","[====>                ] 20%", "[======>              ] 30%", "[========>            ] 40%", "[==========>          ] 50%", "[============>        ] 60%", "[==============>     ] 70%", "[================>    ] 80%", "[==================>  ] 90%", "[====================>] 100% "]
+
+                for i in range(len(animation)):
+                    time.sleep(0.2)
+                    sys.stdout.write("\r" + animation[i % len(animation)])
+                    sys.stdout.flush()
+                    print(f"\nEpoch: {epoch+1} - loss: {loss:.4f}")
+
+                # Backpropagation using your custom function
+                grads = deepflow.activation.backward(X,y_pred,layers_)  # Use your custom backward function
+
+                # Update weights and biases using Adam optimizer
+                if optimiser == "adam":
+                    updated_params = deepflow.optimiser.adam(
+                        [layer.weights for layer in layers_] + [layer.biases for layer in layers_], grads)
+                else:
+                    print("deepflow.optimisers.adam() - optimiser not supported.")
+                
+                for i, layer in enumerate(layers_):
+                    layer.weights = updated_params[2 * i]
+                    layer.biases = updated_params[2 * i + 1]
