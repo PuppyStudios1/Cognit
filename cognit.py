@@ -47,11 +47,11 @@ easy setup
 
 """
 
+
+
 import numpy as np
-import uuid
 import time
 import os, sys
-
 
 class deepflow:
     
@@ -72,15 +72,41 @@ class deepflow:
     - `deepflow.sequential`
 
     """
+    
+    import numpy as np
+    import time
+    import os, sys
+    
     global layers_
     layers_ = []
     
     __version__ = "deepflow package v1.6"
     
+    def _DeepflowLazyLoader(func):
+        """
+        Decorator to lazily load a property.
+
+        Args:
+            func: The function that calculates the property value.
+
+        Returns:
+            A property object that calls the decorated function only on first access.
+        """
+        attr_name = f"_{func.__name__}"  # Create private attribute name
+
+        @property
+        def wrapper(self):
+            if not hasattr(self, attr_name):
+                setattr(self, attr_name, func(self))
+            return getattr(self, attr_name)
+
+        return wrapper
+
+
+    
     def __init__(self) -> None:
         pass
         
-    
     def constant(t1,t2,t3,t4,t5,t6,t7,t8):
         int(t1)
         int(t2)
@@ -247,7 +273,7 @@ class deepflow:
                 Supported options include:
                 
                     - "sigmoid"
-                    - "ReLU"
+                    - "relu"
                     - "tanh"
                     - "elu" (Exponential Linear Unit)
                     - "mish" (Mish activation)
@@ -444,6 +470,7 @@ class deepflow:
                     "relu": self.relu,
                     "swish": self.swish,
                     "elu": self.elu,
+                    
                     "tanh": self.tanh,
                     "mish": self.mish,
                     "linear": self.linear,
@@ -684,18 +711,45 @@ class deepflow:
         `deepflow.seqential.train_data()`
         """
         
-        def __init__(layers_):
+        @classmethod
+        def __init__(self,layers_):
+            self.layers_ = layers_
             for item in layers_:
                 if callable(item):
                     item()  # Call the item if it's a function
             else:
                 pass
             
+        @classmethod
+        def evaluate(self, X, y, loss_calc):
+            """
+            `deepflow.sequential.evaluate()`
+            --------------
+            Evaluates the neural network performance on a given dataset.
 
+            Args:
+                X (numpy.ndarray): The input data for evaluation.
+                y (numpy.ndarray): The target values (labels) for evaluation.
+                layers_ (list): List of layer objects defining the network architecture.
+                loss_calc (function): Function that calculates the loss between predicted and true values.
+
+            Returns:
+                float: The calculated loss on the evaluation data.
+            """
+
+            # Forward propagation
+            y_pred = deepflow.activation.forward(X, self.layers_)  # Use your custom forward function
+
+            # Calculate loss
+            loss = loss_calc(y, y_pred)
+
+            return loss
+        
+        
         @classmethod
         def train_data(self, optimiser="adam", X=None, y=None, layers_=[],loss_calc="mse", epochs=100, min_delta=0.001, patience=5):
             """
-            `deepflow.train_data()`
+            `deepflow.sequential.train_data()`
             -----
             
             Trains the neural network using provided data with Adam optimizer and early stopping.
